@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>기차 터널 길잡이</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#EEF1F0; --card:#FFFFFF; --ink:#1B2420; --soft:#59665F; --line:#D6DDD9;
+  --deep:#24433A; --lane:#F2B705; --on-lane:#1A1400;
+  --good:#14794E; --good-bg:#E3F3EB; --bad:#C23B2A; --bad-bg:#FBE9E6;
+  --chip:#E3E9E6; --focus:#1D4E89; --info:#1D4E89; --info-bg:#E6EEF8;
+  box-sizing:border-box;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;line-height:1.7;font-size:16px}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 64px}
+h1{font-size:30px;margin:8px 0 2px;line-height:1.2}
+h2{font-size:22px;margin:0;line-height:1.3}
+.sub{color:var(--soft);margin:0 0 16px;font-size:15px}
+.lane{border-top:4px dashed var(--lane);margin:16px 0}
+.lvbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.lv{font:inherit;background:var(--deep);color:#fff;border:0;border-radius:10px;padding:10px 4px;cursor:pointer;min-height:60px;opacity:.7;border-bottom:5px solid transparent}
+.lv b{display:block;font-size:17px;font-weight:700}
+.lv small{font-size:12px;opacity:.9}
+.lv.on{border-bottom-color:var(--lane);opacity:1}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.chip{font:inherit;font-size:14px;background:var(--chip);color:var(--ink);border:2px solid transparent;border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px;text-align:left}
+.chip.on{border-color:var(--lane);background:var(--card);font-weight:700}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.card{background:var(--card);border-radius:14px;padding:18px 16px;margin-bottom:14px;border:1px solid var(--line)}
+.head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.no{background:var(--deep);color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;font-weight:700}
+.key{background:var(--lane);color:var(--on-lane);border-radius:10px;padding:10px 14px;font-weight:700;margin:10px 0}
+.key small{display:block;font-weight:500;opacity:.85}
+.tag{display:inline-block;font-size:13px;font-weight:700;color:var(--soft);margin-bottom:4px}
+.q{margin:6px 0 10px;font-size:17px}
+.note{font-size:14px;color:var(--soft);margin:4px 0}
+.diag{display:grid;gap:6px;margin:8px 0 12px}
+.bar{height:30px;border-radius:8px;display:flex;align-items:center;padding:0 10px;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden}
+details{border:1px solid var(--line);border-radius:10px;margin:10px 0;background:var(--card)}
+summary{cursor:pointer;padding:11px 14px;font-weight:700;min-height:44px}
+details>div.in{padding:2px 14px 14px}
+.stp{margin:14px 0;padding-bottom:6px;border-bottom:1px dashed var(--line)}
+.stp:last-child{border-bottom:0}
+.stp b{display:block;margin-bottom:2px;font-size:16px}
+.stp p{margin:4px 0}
+.eq{background:var(--chip);border-radius:8px;padding:7px 12px;margin:5px 0;font-weight:500;overflow-x:auto}
+.concept{background:var(--info-bg);color:var(--info);border-radius:10px;padding:10px 14px;margin:14px 0}
+.concept b{display:block;margin-bottom:2px}
+.concept p{margin:4px 0;color:var(--ink)}
+.check{border-left:4px solid var(--good);background:var(--good-bg);border-radius:8px;padding:10px 14px;margin:14px 0}
+.check b{display:block;color:var(--good);margin-bottom:2px}
+.check p{margin:4px 0}
+.tip{color:var(--soft);font-size:14.5px}
+.ans{font-weight:700;color:var(--good);font-size:17px}
+.try{border-top:4px dashed var(--lane);margin-top:18px;padding-top:14px}
+.try h3{margin:0 0 4px;font-size:18px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+input[type=text]{font:inherit;font-size:18px;width:130px;padding:9px 12px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-height:46px}
+input[type=text].good{border-color:var(--good)}
+input[type=text].bad{border-color:var(--bad)}
+.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 18px;cursor:pointer;min-height:46px;background:var(--lane);color:var(--on-lane)}
+.btn.ghost{background:var(--chip);color:var(--ink)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.fb{border-radius:10px;padding:10px 14px;margin:8px 0;font-weight:500}
+.fb.good{background:var(--good-bg);color:var(--good)}
+.fb.bad{background:var(--bad-bg);color:var(--bad)}
+.hintbox{border:2px dashed var(--bad);border-radius:10px;padding:10px 12px;margin:8px 0}
+.hintbox p{margin:2px 0}
+.tally{font-size:14px;color:var(--soft);margin:6px 0 0}
+.story{background:var(--chip);border-radius:10px;padding:12px 14px;margin:8px 0 12px;font-size:16.5px;line-height:1.8}
+.more{border-top:1px solid var(--line);margin-top:16px;padding-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>기차 터널 길잡이</h1>
+  <p class="sub">거리·속력·시간 · 기차가 터널과 다리를 지나는 문제 · 단계별 연습</p>
+  <div class="lvbar" id="lvbar" role="tablist" aria-label="단계 고르기"></div>
+  <div class="chips" id="chips" role="tablist" aria-label="유형 고르기"></div>
+  <div class="lane"></div>
+  <main id="main"></main>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ===== 도구 함수 ===== */
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const tryGen=f=>{for(let k=0;k<3000;k++){const r=f();if(r)return r;}return null;};
+const make=g=>{let r=null;while(!r)r=g();return r;};
+const EQ=t=>`<div class="eq">${t}</div>`;
+const P=t=>`<p>${t}</p>`;
+const ST=(n,t,...p)=>`<div class="stp"><b>${n} ${t}</b>${p.join('')}</div>`;
+const CON=arr=>`<div class="concept"><b>📘 개념 정리</b>${arr.map(s=>`<p>${s}</p>`).join('')}</div>`;
+const CHK=s=>`<div class="check"><b>✅ 검산 (답이 맞는지 확인)</b><p>${s}</p></div>`;
+const SPEEDS=[10,15,20,25,30];
+const C_TUN='#24433A', C_TRN='#F2B705', C_TRN2='#2F6F8F';
+
+/* 길이를 대략 비교하는 막대 그림 (실제 비율과 조금 다를 수 있음) */
+function diag(items){
+  const mx=Math.max(...items.map(i=>i.len));
+  return `<div class="diag" aria-hidden="true">${items.map(i=>`<div class="bar" style="width:${Math.max(30,Math.round(i.len/mx*100))}%;background:${i.c};color:${i.ink}">${i.n} ${i.len}m</div>`).join('')}</div><p class="note">※ 막대는 길이를 대략 비교하기 위한 그림이에요.</p>`;
+}
+
+/* ================= 기본 ================= */
+/* 기차가 터널을 빠져나오는 시간 */
+const G1=()=>tryGen(()=>{
+  const v=pick(SPEEDS),L=pick([100,120,150,200,250]),T=pick([300,400,500,600,800,900]),D=L+T;
+  if(D%v)return null;
+  const t=D/v;
+  return {unit:'초',ans:t,
+    fig:diag([{n:'터널',len:T,c:C_TUN,ink:'#fff'},{n:'기차',len:L,c:C_TRN,ink:'#1A1400'}]),
+    q:`길이가 ${L}m인 기차가 길이 ${T}m인 터널에 들어갑니다. 기차는 1초에 ${v}m를 갑니다. 기차 전체가 터널을 완전히 빠져나올 때까지 걸리는 시간은 몇 초입니까?`,
+    hint:'기차의 맨 앞이 출구에 닿아도 맨 뒤는 아직 터널 안에 있어요. 맨 뒤까지 나와야 하므로, 기차가 간 거리는 터널 길이와 기차 길이를 더한 값이에요.',
+    steps:[
+      ST('①','출발점과 도착점을 정합니다.',P('출발: 기차의 맨 앞이 터널 입구에 닿은 순간'),P('도착: 기차의 맨 뒤가 터널 출구를 빠져나온 순간'),P('맨 앞은 터널 길이만큼만 가면 출구에 닿지만, 맨 뒤는 기차 길이만큼 더 가야 완전히 나옵니다.')),
+      ST('②','움직인 거리를 구합니다.',EQ('(움직인 거리) = (터널 길이) + (기차 길이)'),EQ(`${T} + ${L} = ${D}(m)`)),
+      ST('③','걸린 시간을 구합니다.',P('(시간) = (거리) ÷ (속력)'),EQ(`${D} ÷ ${v} = ${t}(초)`))],
+    concept:CON(['거리 = 속력 × 시간, 시간 = 거리 ÷ 속력 관계를 기억하세요.','"완전히 지난다", "완전히 빠져나온다"는 말은 기차 길이를 꼭 더해야 한다는 신호입니다.']),
+    check:CHK(`${v}m씩 ${t}초 동안 가면 ${v} × ${t} = ${D}m입니다. 터널 ${T}m와 기차 ${L}m의 합과 같으므로 맞습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* 통과 시간으로 터널 길이 구하기 */
+const G2=()=>tryGen(()=>{
+  const v=pick(SPEEDS),L=pick([100,120,150,200,250,300]),t=ri(30,120),D=v*t,T=D-L;
+  if(T<200||T>1200||T%10)return null;
+  return {unit:'m',ans:T,fig:'',
+    q:`길이가 ${L}m인 기차가 터널을 완전히 통과하는 데 ${t}초가 걸렸습니다. 기차는 1초에 ${v}m를 갑니다. 터널의 길이는 몇 m입니까?`,
+    hint:`먼저 기차가 ${t}초 동안 간 거리를 구해 보세요. 그 거리는 터널 길이와 기차 길이를 더한 값이에요.`,
+    steps:[
+      ST('①','기차가 간 거리를 구합니다.',P('(속력) × (시간) = (거리)'),EQ(`${v} × ${t} = ${D}(m)`)),
+      ST('②','터널 길이를 구합니다.',P('움직인 거리는 (터널 길이) + (기차 길이)이므로, 터널 길이는 움직인 거리에서 기차 길이를 뺍니다.'),EQ(`${D} − ${L} = ${T}(m)`))],
+    concept:CON(['(움직인 거리) = (터널 길이) + (기차 길이)','문제에서 구하는 값이 무엇인지 먼저 확인하고, 나머지 값을 식에서 옮겨 씁니다.']),
+    check:CHK(`터널 ${T}m + 기차 ${L}m = ${T+L}m이고, ${v} × ${t} = ${D}m입니다. 두 값이 같으므로 맞습니다.`),
+    last:`답: ${T}m.`};
+});
+
+/* ================= 응용 ================= */
+/* 기차 전체가 터널 안에 있는 시간 */
+const G3=()=>tryGen(()=>{
+  const v=pick(SPEEDS),L=pick([100,120,150,200,250]),T=pick([300,400,500,600,800,900]),d=T-L;
+  if(d%v)return null;
+  const t=d/v;
+  return {unit:'초',ans:t,
+    fig:diag([{n:'터널',len:T,c:C_TUN,ink:'#fff'},{n:'기차',len:L,c:C_TRN,ink:'#1A1400'}]),
+    q:`길이가 ${L}m인 기차가 길이 ${T}m인 터널을 지나갑니다. 기차는 1초에 ${v}m를 갑니다. 기차 전체가 터널 안에 완전히 들어가 있어서 밖에서 기차가 보이지 않는 시간은 몇 초입니까?`,
+    hint:'기차 맨 뒤가 터널 입구에 닿은 순간부터, 기차 맨 앞이 터널 출구에 닿을 때까지 움직인 거리를 생각해 보세요.',
+    steps:[
+      ST('①','두 순간을 나누어 생각합니다.',P('(가) 맨 뒤가 입구에 닿은 순간: 기차 맨 앞은 기차 길이 L만큼 들어와 있습니다.'),P('(나) 맨 앞이 출구에 닿은 순간: 기차 맨 앞은 터널 길이 T만큼 들어와 있습니다.'),P('기차 전체가 안에 있는 시간은 (가)부터 (나)까지입니다.')),
+      ST('②','그 사이에 움직인 거리를 구합니다.',EQ('(움직인 거리) = (터널 길이) − (기차 길이)'),EQ(`${T} − ${L} = ${d}(m)`)),
+      ST('③','걸린 시간을 구합니다.',P('(시간) = (거리) ÷ (속력)'),EQ(`${d} ÷ ${v} = ${t}(초)`))],
+    concept:CON(['기차가 "보이지 않는" 시간은 기차 길이를 빼서 구합니다.','터널 길이보다 기차가 길면 전체가 들어가는 순간은 없습니다. 그래서 터널이 기차보다 길어야 합니다.']),
+    check:CHK(`${d}m를 ${v}m씩 가면 ${v} × ${t} = ${d}m입니다. 맞습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* 마주 보고 달리는 두 기차가 지나칠 때 */
+const G4=()=>tryGen(()=>{
+  const v1=pick([10,15,20]),v2=pick([10,15,20,25]),s=v1+v2,L1=pick([100,150,200,250]),L2=pick([100,150,200,300]),D=L1+L2;
+  if(D%s)return null;
+  const t=D/s;
+  return {unit:'초',ans:t,
+    fig:diag([{n:'기차 A',len:L1,c:C_TRN,ink:'#1A1400'},{n:'기차 B',len:L2,c:C_TRN2,ink:'#fff'}]),
+    q:`길이 ${L1}m인 기차 A는 1초에 ${v1}m를 가고, 길이 ${L2}m인 기차 B는 1초에 ${v2}m를 갑니다. 두 기차가 서로 마주 보고 달려서, 두 기차의 맨 앞이 만난 순간부터 두 기차가 완전히 지나칠 때까지 걸리는 시간은 몇 초입니까?`,
+    hint:'두 기차가 완전히 지나가려면 두 기차 길이의 합만큼 서로 가까워져야 해요. 1초에 서로 가까워지는 거리는 두 속력의 합이에요.',
+    steps:[
+      ST('①','서로 가까워져야 하는 거리를 구합니다.',P('두 기차의 맨 앞이 만난 뒤, 맨 뒤끼리 지나칠 때까지 가까워져야 합니다.'),EQ(`${L1} + ${L2} = ${D}(m)`)),
+      ST('②','1초에 가까워지는 거리를 구합니다.',P('마주 보고 달리므로 속력을 더합니다.'),EQ(`${v1} + ${v2} = ${s}(m)`)),
+      ST('③','걸린 시간을 구합니다.',P('(시간) = (가까워진 거리) ÷ (1초에 가까워지는 거리)'),EQ(`${D} ÷ ${s} = ${t}(초)`))],
+    concept:CON(['마주 보면 속력을 더하고, 같은 방향으로 가면 속력을 뺍니다.','"지나칠 때까지"는 두 기차 길이의 합만큼 가까워진다는 뜻입니다.']),
+    check:CHK(`${s}m씩 ${t}초 동안 가까워지면 ${s} × ${t} = ${D}m입니다. 두 기차 길이의 합 ${D}m과 같습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* 지나친 시간으로 기차 A의 길이 구하기 */
+const N5=()=>tryGen(()=>{
+  const v1=pick([10,15,20]),v2=pick([10,15,20,25]),s=v1+v2,L2=pick([100,150,200,300]),t=ri(8,30),D=s*t,L1=D-L2;
+  if(L1<100||L1>400)return null;
+  return {unit:'m',ans:L1,fig:'',
+    q:`기차 A는 1초에 ${v1}m를 가고, 길이 ${L2}m인 기차 B는 1초에 ${v2}m를 갑니다. 두 기차가 서로 마주 보고 달려 맨 앞이 만난 순간부터 완전히 지나치는 데 ${t}초가 걸렸습니다. 기차 A의 길이는 몇 m입니까?`,
+    hint:'두 기차가 지나칠 때 가까워진 거리는 두 기차 길이의 합이에요. 먼저 가까워진 거리를 구한 뒤, 기차 B의 길이를 빼 보세요.',
+    steps:[
+      ST('①','가까워진 거리를 구합니다.',P('(1초에 가까워지는 거리) × (시간) = (가까워진 거리)'),EQ(`${s} × ${t} = ${D}(m)`)),
+      ST('②','기차 A의 길이를 구합니다.',P('(가까워진 거리) = (기차 A 길이) + (기차 B 길이)'),EQ(`${D} − ${L2} = ${L1}(m)`))],
+    concept:CON(['구하는 값(기차 A 길이)을 □라 하고 식을 세우면 쉽습니다.','(□ + 기차 B 길이) = (가까워진 거리)에서 □를 구합니다.']),
+    check:CHK(`기차 A ${L1}m + 기차 B ${L2}m = ${L1+L2}m이고, ${s} × ${t} = ${D}m입니다. 두 값이 같으니 맞습니다.`),
+    last:`답: ${L1}m.`};
+});
+
+/* 필요 없는 정보가 섞인 문제 */
+const N6=()=>tryGen(()=>{
+  const v=pick(SPEEDS),L=pick([100,150,200,250]),T=pick([300,400,500,600,800]);
+  if(T%v)return null;
+  const t=T/v;
+  return {unit:'초',ans:t,fig:'',
+    q:`길이가 ${L}m인 기차가 길이 ${T}m인 터널에 들어갑니다. 기차는 1초에 ${v}m를 갑니다. 기차의 맨 앞이 터널 입구에서 출구에 닿을 때까지 걸리는 시간은 몇 초입니까? (기차 길이는 답을 구하는 데 필요하지 않습니다.)`,
+    hint:'맨 앞이 가는 거리는 터널 길이와 같아요. 기차 길이는 이 문제에서 쓰지 않아도 됩니다.',
+    steps:[
+      ST('①','묻는 것을 확인합니다.',P('"맨 앞이 입구에서 출구에 닿을 때까지"는 맨 앞만 생각하는 것입니다. 맨 뒤는 이 문제와 상관없습니다.')),
+      ST('②','움직인 거리를 구합니다.',P('맨 앞이 입구에서 출구까지 가는 거리는 터널 길이와 같습니다.'),EQ(`${T}(m)`)),
+      ST('③','걸린 시간을 구합니다.',P('(시간) = (거리) ÷ (속력)'),EQ(`${T} ÷ ${v} = ${t}(초)`))],
+    concept:CON(['문장제에서는 숫자가 많이 나와도 모두 쓰는 것이 아닙니다.','"무엇을 묻는가?"를 먼저 찾고, 그 답에 필요한 숫자만 고릅니다.']),
+    check:CHK(`${v}m씩 ${t}초 동안 가면 ${v} × ${t} = ${T}m, 터널 길이와 같습니다. 맞습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* 여러 칸으로 된 기차가 터널을 통과하는 시간 */
+const N15=()=>tryGen(()=>{
+  const v=pick([20,25,30]),e=pick([15,20]),c=pick([15,18,20,25]),n=ri(5,9),L=e+c*n,k=ri(15,40),T=v*k-L;
+  if(T<300||T>900||T%10)return null;
+  return {unit:'초',ans:k,fig:'',
+    q:`한 기차는 기관차 1칸과 같은 길이의 객차 ${n}칸으로 이루어져 있습니다. 기관차 1칸의 길이는 ${e}m이고, 객차 1칸의 길이는 ${c}m입니다. 이 기차가 길이 ${T}m인 터널을 지납니다. 기차는 1초에 ${v}m를 갑니다. 기차 전체가 터널을 완전히 빠져나오는 데 걸리는 시간은 몇 초입니까?`,
+    hint:'먼저 기차 전체 길이를 구하세요. 객차는 여러 칸이므로 한 칸 길이에 칸 수를 곱해야 해요.',
+    steps:[
+      ST('①','객차의 전체 길이를 구합니다.',P('객차는 같은 길이로 여러 칸이므로 (한 칸 길이) × (칸 수)입니다.'),EQ(`${c} × ${n} = ${c*n}(m)`)),
+      ST('②','기차 전체 길이를 구합니다.',P('기관차 길이와 객차 전체 길이를 더합니다.'),EQ(`${e} + ${c*n} = ${L}(m)`)),
+      ST('③','움직인 거리를 구합니다.',EQ('(움직인 거리) = (터널 길이) + (기차 길이)'),EQ(`${T} + ${L} = ${T+L}(m)`)),
+      ST('④','걸린 시간을 구합니다.',P('(시간) = (거리) ÷ (속력)'),EQ(`${T+L} ÷ ${v} = ${k}(초)`))],
+    concept:CON(['기차 길이는 칸별 길이를 모두 더해 구합니다. 칸 수가 있는 문제에서 자주 틀리는 부분입니다.','칸 수를 곱할 때 기관차 1칸은 곱하지 않습니다. 기관차는 1칸뿐이기 때문입니다.']),
+    check:CHK(`${v}m씩 ${k}초 동안 가면 ${v} × ${k} = ${v*k}m입니다. 터널 ${T}m와 기차 ${L}m의 합 ${T+L}m과 같습니다.`),
+    last:`답: ${k}초.`};
+});
+
+/* ================= 심화 ================= */
+/* 같은 방향 추월 시간 */
+const G5=()=>tryGen(()=>{
+  const v2=pick([10,15,20]),v1=v2+pick([5,10]),d=v1-v2,L1=pick([100,150,200,250]),L2=pick([100,150,200,300]),D=L1+L2;
+  if(D%d)return null;
+  const t=D/d;
+  return {unit:'초',ans:t,
+    fig:diag([{n:'기차 A',len:L1,c:C_TRN,ink:'#1A1400'},{n:'기차 B',len:L2,c:C_TRN2,ink:'#fff'}]),
+    q:`길이 ${L1}m인 빠른 기차 A가 1초에 ${v1}m로 달리고 있고, 같은 방향으로 길이 ${L2}m인 느린 기차 B가 1초에 ${v2}m로 달리고 있습니다. 기차 A의 맨 앞이 기차 B의 맨 뒤에 닿은 순간부터 기차 A의 맨 뒤가 기차 B의 맨 앞을 지날 때까지 걸리는 시간은 몇 초입니까?`,
+    hint:'두 기차 길이의 합만큼 서로 가까워져야 해요. 같은 방향으로 달리므로 1초에 가까워지는 거리는 두 속력의 차예요.',
+    steps:[
+      ST('①','가까워져야 하는 거리를 구합니다.',P('기차 A의 맨 뒤와 기차 B의 맨 앞이 만나려면 두 기차 길이의 합만큼 가까워져야 합니다.'),EQ(`${L1} + ${L2} = ${D}(m)`)),
+      ST('②','1초에 가까워지는 거리를 구합니다.',P('같은 방향으로 달리므로 속력을 뺍니다.'),EQ(`${v1} − ${v2} = ${d}(m)`)),
+      ST('③','걸린 시간을 구합니다.',EQ(`${D} ÷ ${d} = ${t}(초)`))],
+    concept:CON(['같은 방향: 상대 속력 = (빠른 속력) − (느린 속력)','추월은 "앞부분이 만나는 순간"부터 "뒷부분이 지나가는 순간"까지이므로 두 길이를 모두 더합니다.']),
+    check:CHK(`${d}m씩 ${t}초 동안 가까워지면 ${d} × ${t} = ${D}m입니다. 두 기차 길이의 합과 같습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* 두 시간으로 기차 길이 구하기 */
+const G6=()=>tryGen(()=>{
+  const v=pick([10,15,20,25]),t1=ri(40,100),t2=ri(10,t1-10);
+  if((v*(t1-t2))%2)return null;
+  const L=v*(t1-t2)/2,T=v*(t1+t2)/2;
+  if(L<50||L>300||L%10||T>1500)return null;
+  return {unit:'m',ans:L,fig:'',
+    q:`어떤 기차가 터널을 완전히 통과하는 데 ${t1}초가 걸렸습니다. 같은 기차가 터널 안에 완전히 들어가 밖에서 보이지 않는 시간은 ${t2}초였습니다. 기차는 1초에 ${v}m를 갑니다. 이 기차의 길이는 몇 m입니까?`,
+    hint:'통과 거리는 (터널 + 기차), 보이지 않는 거리는 (터널 − 기차)예요. 두 거리의 차를 구하면 기차 길이의 2배가 나와요.',
+    steps:[
+      ST('①','두 거리를 각각 구합니다.',P('(통과 거리) = (터널 + 기차), (보이지 않는 거리) = (터널 − 기차)'),EQ(`통과 거리: ${v} × ${t1} = ${v*t1}(m)`),EQ(`보이지 않는 거리: ${v} × ${t2} = ${v*t2}(m)`)),
+      ST('②','두 거리의 차로 기차 길이를 구합니다.',P('(통과 거리) − (보이지 않는 거리) = (기차 길이) × 2'),EQ(`${v*t1} − ${v*t2} = ${v*(t1-t2)}`),EQ(`기차 길이 = ${v*(t1-t2)} ÷ 2 = ${L}(m)`))],
+    concept:CON(['(터널 + 기차) − (터널 − 기차) = 기차 × 2 라는 점을 기억하세요.','터널 길이는 이 방법으로 구하지 않아도 되므로, 기차 길이만 묻는 문제에서 가장 빠른 방법입니다.']),
+    check:CHK(`기차 ${L}m일 때 통과 거리는 ${L}+터널, 보이지 않는 거리는 터널−${L}입니다. 두 값의 차는 ${2*L}m이고, ${v} × (${t1} − ${t2}) = ${v*(t1-t2)}m와 같습니다.`),
+    last:`답: ${L}m.`};
+});
+
+/* 통과 시간으로 속력 구하기 (답: 시속 km) */
+const N9=()=>tryGen(()=>{
+  const v=pick(SPEEDS),L=pick([100,150,200,250]),T=pick([300,400,500,600,800]),D=L+T;
+  if(D%v)return null;
+  const t=D/v;
+  const kmh=v*36/10;
+  return {unit:'km/h',ans:kmh,fig:'',
+    q:`길이 ${L}m인 기차가 길이 ${T}m인 터널을 완전히 통과하는 데 ${t}초가 걸렸습니다. 이 기차의 속력은 시속 몇 km입니까?`,
+    hint:'먼저 기차가 간 거리(터널 + 기차)를 구하고, 1초에 간 거리를 구해 보세요. 초속(m/s)을 시속(km/h)으로 바꾸려면 3.6을 곱합니다.',
+    steps:[
+      ST('①','기차가 간 거리를 구합니다.',EQ(`${T} + ${L} = ${D}(m)`)),
+      ST('②','초속(1초에 간 거리)을 구합니다.',P('(속력) = (거리) ÷ (시간)'),EQ(`${D} ÷ ${t} = ${v}(m/s)`)),
+      ST('③','시속(km/h)으로 바꿉니다.',P('1시간 = 3600초, 1km = 1000m 이므로 초속 × 3600 ÷ 1000 = 초속 × 3.6'),EQ(`${v} × 3.6 = ${kmh}(km/h)`))],
+    concept:CON(['초속(m/s) → 시속(km/h): × 3.6','시속(km/h) → 초속(m/s): ÷ 3.6','두 단위를 헷갈리면 답이 3.6배 차이 나므로, 답이 너무 크거나 작으면 단위를 다시 확인하세요.']),
+    check:CHK(`시속 ${kmh}km는 초속으로 ${kmh} ÷ 3.6 = ${v}m입니다. 처음 속력 ${v}m/s와 같으므로 맞습니다.`),
+    last:`답: 시속 ${kmh}km.`};
+});
+
+/* 추월 시간으로 빠른 기차의 속력 구하기 (답: m/s) */
+const N10=()=>tryGen(()=>{
+  const v2=pick([10,15,20]),d=pick([5,10,15]),v1=v2+d,L1=pick([100,150,200,250]),L2=pick([100,150,200,300]),D=L1+L2;
+  if(D%d)return null;
+  const t=D/d;
+  return {unit:'m/s',ans:v1,fig:'',
+    q:`길이 ${L1}m인 기차 A가 같은 방향으로 달리는 길이 ${L2}m인 기차 B를 완전히 추월하는 데 ${t}초가 걸렸습니다. 기차 B는 1초에 ${v2}m를 갑니다. 기차 A는 1초에 몇 m를 갑니까?`,
+    hint:'추월할 때 가까워진 거리는 두 기차 길이의 합이에요. 1초에 가까워진 거리(두 속력의 차)를 구한 뒤 기차 B의 속력을 더해 보세요.',
+    steps:[
+      ST('①','가까워진 거리를 구합니다.',EQ(`${L1} + ${L2} = ${D}(m)`)),
+      ST('②','두 속력의 차를 구합니다.',P('(속력의 차) = (가까워진 거리) ÷ (시간)'),EQ(`${D} ÷ ${t} = ${d}(m/s)`)),
+      ST('③','기차 A의 속력을 구합니다.',P('(기차 A 속력) = (기차 B 속력) + (속력의 차)'),EQ(`${v2} + ${d} = ${v1}(m/s)`))],
+    concept:CON(['추월 문제는 "두 속력의 차"를 먼저 구하는 것이 핵심입니다.','문제에서 기차 B의 속력을 알려 주면, 기차 A의 속력은 그 값에 차를 더해 구합니다.']),
+    check:CHK(`기차 A ${v1}m/s, 기차 B ${v2}m/s이면 차는 ${v1} − ${v2} = ${d}m/s입니다. ${d} × ${t} = ${D}m로 두 기차 길이의 합과 같습니다.`),
+    last:`답: ${v1}m/s.`};
+});
+
+/* 시차를 두고 출발한 기차가 따라잡는 시간 */
+const N16=()=>tryGen(()=>{
+  const vA=pick([10,15,20]),d=pick([5,10]),vB=vA+d,t0=pick([20,30,40,50,60]),num=vA*t0;
+  if(num%d)return null;
+  const tau=num/d;
+  return {unit:'초',ans:tau,fig:'',
+    q:`기차 A와 기차 B가 같은 역에서 같은 방향으로 출발합니다. 기차 A는 먼저 출발하여 1초에 ${vA}m를 갑니다. 기차 B는 기차 A가 출발하고 ${t0}초 뒤에 출발하여 1초에 ${vB}m를 갑니다. 두 기차의 길이는 생각하지 않습니다. 기차 B가 출발한 뒤 기차 A를 따라잡을 때까지 걸리는 시간은 몇 초입니까?`,
+    hint:`기차 B가 출발할 때 기차 A는 이미 ${vA} × ${t0}m만큼 앞서 있어요. 기차 B는 1초에 ${d}m씩 가까워집니다.`,
+    steps:[
+      ST('①','기차 B가 출발할 때 앞선 거리를 구합니다.',P('기차 A는 기차 B보다 먼저 출발했으므로, 그 시간 동안 이미 앞서 가 있습니다.'),EQ(`${vA} × ${t0} = ${num}(m)`)),
+      ST('②','1초에 줄어드는 거리를 구합니다.',P('기차 B가 기차 A보다 1초에 더 가는 거리입니다.'),EQ(`${vB} − ${vA} = ${d}(m)`)),
+      ST('③','따라잡는 시간을 구합니다.',P('(시간) = (처음 앞선 거리) ÷ (1초에 줄어드는 거리)'),EQ(`${num} ÷ ${d} = ${tau}(초)`))],
+    concept:CON(['출발 시각이 다르면, 먼저 출발한 기차의 "앞선 거리"를 먼저 구합니다.','이후에는 같은 방향 추월과 같은 방식으로 속력의 차를 이용합니다.']),
+    check:CHK(`기차 B가 ${tau}초 달린 거리는 ${vB} × ${tau} = ${vB*tau}m입니다. 기차 A는 ${t0+tau}초 동안 ${vA} × ${t0+tau} = ${vA*(t0+tau)}m를 갔으므로 두 값이 같습니다.`),
+    last:`답: ${tau}초.`};
+});
+
+/* ================= 극심화 ================= */
+/* 시속으로 주어진 속력으로 통과 시간 구하기 (긴 지문) */
+const N11=()=>tryGen(()=>{
+  const kmh=pick([36,54,72,90,108]),v=kmh*10/36,L=pick([100,150,200,250]),T=pick([300,400,500,600,800,900]),D=L+T;
+  const pass=ri(120,300);
+  if(D%v)return null;
+  const t=D/v;
+  return {unit:'초',ans:t,fig:'',
+    q:`지윤이는 기차 여행을 하며 기차의 속력과 터널을 기록하는 과제를 했습니다. 기차 객실 앞 전광판에는 "시속 ${kmh}km"라고 적혀 있었습니다. 이 기차의 길이는 ${L}m이었고, 객실에는 ${pass}명의 승객이 타고 있었습니다. 기차는 길이 ${T}m인 터널에 들어가, 기차 전체가 터널을 완전히 빠져나올 때까지 일정한 속력으로 달렸습니다. 이때 걸린 시간은 몇 초입니까? (승객 수는 계산에 쓰지 않습니다.)`,
+    hint:'시속 km를 초속 m로 먼저 바꾸세요. 1km = 1000m, 1시간 = 3600초이므로 (시속) ÷ 3.6이 초속이에요. 승객 수는 답에 필요하지 않습니다.',
+    steps:[
+      ST('①','속력을 같은 단위로 맞춥니다.',P('시속 km는 1시간에 간 km입니다. 1시간 = 3600초, 1km = 1000m이므로 1초에 간 m를 구하려면 3.6으로 나눕니다.'),EQ(`${kmh} ÷ 3.6 = ${v}(m/s)`)),
+      ST('②','기차 전체가 움직인 거리를 구합니다.',P('맨 앞이 입구에 닿은 때부터 맨 뒤가 출구를 나올 때까지이므로 터널 길이와 기차 길이를 더합니다.'),EQ(`${T} + ${L} = ${D}(m)`)),
+      ST('③','걸린 시간을 구합니다.',P('(시간) = (거리) ÷ (속력)'),EQ(`${D} ÷ ${v} = ${t}(초)`)),
+      ST('④','문제에 있는 나머지 정보를 확인합니다.',P(`승객 ${pass}명은 시간을 구할 때 필요 없는 정보입니다.`))],
+    concept:CON(['시속 → 초속: ÷ 3.6, 초속 → 시속: × 3.6','긴 지문에서는 "무엇을 구하는가?"를 먼저 읽고, 필요한 숫자 2~3개만 표시하세요.']),
+    check:CHK(`초속 ${v}m로 ${t}초 가면 ${v} × ${t} = ${D}m입니다. 터널 ${T}m + 기차 ${L}m과 같습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* 두 구간의 속력이 다를 때 걸린 시간 (긴 지문) */
+const N12=()=>tryGen(()=>{
+  const v1=pick([10,20,25]),v2=pick([10,15,20]),L=pick([100,200]),T=pick([400,600,800]),D=L+T,x=pick([200,400,600]);
+  if(x>=D||x%v1||(D-x)%v2)return null;
+  const t1=x/v1,r=D-x,t2=r/v2,t=t1+t2;
+  return {unit:'초',ans:t,fig:'',
+    q:`길이 ${L}m인 기차가 길이 ${T}m인 터널을 완전히 통과합니다. 기차는 출발 직후 처음 ${x}m 구간에서 1초에 ${v1}m로 달렸습니다. 이 구간은 선로 공사로 천천히 달려야 했습니다. 그 뒤 나머지 구간에서는 1초에 ${v2}m로 달렸습니다. 기차 전체가 터널을 완전히 빠져나올 때까지 걸린 시간은 몇 초입니까? (기차 전체가 움직인 거리는 터널 길이와 기차 길이를 더한 값입니다.)`,
+    hint:'구간마다 따로 시간을 구한 뒤 더하세요. 속력은 구간마다 다르므로 두 속력을 평균 내면 안 됩니다.',
+    steps:[
+      ST('①','전체 거리를 구합니다.',EQ(`${T} + ${L} = ${D}(m)`)),
+      ST('②','처음 구간의 시간을 구합니다.',P('(시간) = (거리) ÷ (속력)'),EQ(`${x} ÷ ${v1} = ${t1}(초)`)),
+      ST('③','나머지 구간의 시간을 구합니다.',P('나머지 거리 = 전체 거리 − 처음 구간 거리'),EQ(`${D} − ${x} = ${r}(m)`),EQ(`${r} ÷ ${v2} = ${t2}(초)`)),
+      ST('④','두 시간을 더합니다.',EQ(`${t1} + ${t2} = ${t}(초)`))],
+    concept:CON(['속력이 바뀌면 구간을 나누어 각각 "시간 = 거리 ÷ 속력"을 구합니다.','두 속력의 평균(예: (v1+v2)÷2)으로 한꺼번에 계산하면 틀립니다.']),
+    check:CHK(`처음 구간 ${x}m ÷ ${v1}m/s = ${t1}초, 나머지 ${r}m ÷ ${v2}m/s = ${t2}초입니다. 합은 ${t}초이며, 거리 합은 ${x} + ${r} = ${D}m로 맞습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* 반대 방향으로 걷는 사람과 엇갈리는 시간 (긴 지문) */
+const N13=()=>tryGen(()=>{
+  const v=pick([15,20,25]),u=pick([1,2,3]),s=v+u,t=ri(5,15),L=s*t,ukmh=u*36/10;
+  if(L<100||L>400)return null;
+  return {unit:'초',ans:t,fig:'',
+    q:`공원 옆 철길을 따라 길이 ${L}m인 기차가 1초에 ${v}m로 달리고 있습니다. 같은 시각, 맞은편 길가에서 아버지가 시속 ${ukmh}km로 기차와 반대 방향으로 걸어옵니다. 아버지는 키가 약 170cm이고, 기차 창가에는 아이들이 앉아 있습니다. 기차의 맨 앞이 아버지와 만난 순간부터 기차 전체가 아버지를 지나칠 때까지 걸리는 시간은 몇 초입니까? (아버지는 한 점처럼 생각합니다.)`,
+    hint:'아버지의 속력을 초속(m/s)으로 바꾸세요. 기차와 아버지가 반대 방향이므로 두 속력을 더합니다. 기차 전체가 지나야 하므로 기차 길이를 그 합으로 나눕니다.',
+    steps:[
+      ST('①','아버지의 속력을 초속으로 바꿉니다.',P('(시속) ÷ 3.6 = (초속)'),EQ(`${ukmh} ÷ 3.6 = ${u}(m/s)`)),
+      ST('②','1초에 가까워지는 거리를 구합니다.',P('반대 방향이므로 속력을 더합니다.'),EQ(`${v} + ${u} = ${s}(m/s)`)),
+      ST('③','걸린 시간을 구합니다.',P('기차 전체가 지나려면 기차 길이만큼 가까워져야 합니다.'),EQ(`${L} ÷ ${s} = ${t}(초)`))],
+    concept:CON(['반대 방향: 속력을 더합니다. 같은 방향: 속력을 뺍니다.','사람처럼 길이가 없는 대상은 "지나치는 거리"가 기차 길이와 같습니다.']),
+    check:CHK(`${s}m/s로 ${t}초 동안 가면 ${s} × ${t} = ${L}m입니다. 기차 길이와 같습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* 두 구간 평균 속력 (긴 지문, 답: 시속 km) */
+const N14=()=>tryGen(()=>{
+  const v1=pick([10,15,20,25]),v2=pick([10,15,20,25,30]),t1=ri(10,40),t2=ri(10,40),D=v1*t1+v2*t2,T=t1+t2;
+  if(v1===v2||D%T)return null;
+  const avg=D/T;
+  if(avg%5)return null;
+  const kmh=avg*36/10;
+  return {unit:'km/h',ans:kmh,fig:'',
+    q:`미현이네 가족은 기차를 타고 두 구간을 이동했습니다. 첫째 구간에서 기차는 1초에 ${v1}m로 ${t1}초 동안 달렸습니다. 둘째 구간에서는 1초에 ${v2}m로 ${t2}초 동안 달렸습니다. 두 구간 사이에서 기차는 멈추지 않았습니다. 이 기차가 두 구간 전체를 달린 평균 속력은 시속 몇 km입니까?`,
+    hint:'평균 속력은 (전체 거리) ÷ (전체 시간)이에요. 두 속력을 그냥 더해 2로 나누면 틀립니다.',
+    steps:[
+      ST('①','각 구간의 거리를 구합니다.',P('(거리) = (속력) × (시간)'),EQ(`${v1} × ${t1} = ${v1*t1}(m)`),EQ(`${v2} × ${t2} = ${v2*t2}(m)`)),
+      ST('②','전체 거리와 전체 시간을 구합니다.',EQ(`거리: ${v1*t1} + ${v2*t2} = ${D}(m)`),EQ(`시간: ${t1} + ${t2} = ${T}(초)`)),
+      ST('③','평균 속력을 구합니다.',P('(평균 속력) = (전체 거리) ÷ (전체 시간)'),EQ(`${D} ÷ ${T} = ${avg}(m/s)`)),
+      ST('④','시속(km/h)으로 바꿉니다.',EQ(`${avg} × 3.6 = ${kmh}(km/h)`))],
+    concept:CON(['평균 속력 = 전체 거리 ÷ 전체 시간','속력의 평균을 그냥 나누면 안 되는 이유: 오래 달린 구간이 평균에 더 큰 영향을 주기 때문입니다.']),
+    check:CHK(`평균 ${avg}m/s × 전체 시간 ${T}초 = ${avg*T}m로, 전체 거리 ${D}m와 같습니다.`),
+    last:`답: 시속 ${kmh}km.`};
+});
+
+/* 터널 두 개를 연속으로 통과 (긴 지문) */
+const N17=()=>tryGen(()=>{
+  const v=pick([20,25,30]),L=pick([100,150,200]),TA=pick([200,300,400]),G=pick([100,200,300]),TB=pick([200,300,400,500]),D=L+TA+G+TB;
+  if(D%v)return null;
+  const t=D/v;
+  return {unit:'초',ans:t,fig:'',
+    q:`기차가 길이 ${TA}m인 첫 번째 터널에 들어갑니다. 첫 번째 터널을 지나면 길이 ${G}m의 다리가 있고, 그 다음에 길이 ${TB}m인 두 번째 터널이 있습니다. 기차의 길이는 ${L}m이고, 기차는 1초에 ${v}m를 일정하게 갑니다. 기차의 맨 앞이 첫 번째 터널 입구에 닿은 순간부터, 기차의 맨 뒤가 두 번째 터널 출구를 완전히 빠져나올 때까지 걸리는 시간은 몇 초입니까?`,
+    hint:'기차의 맨 앞이 두 번째 터널 출구까지 가는 거리는 첫 번째 터널, 다리, 두 번째 터널을 모두 더한 값이에요. 맨 뒤까지 나오려면 기차 길이를 더해야 합니다.',
+    steps:[
+      ST('①','맨 앞이 두 번째 출구까지 가는 거리를 구합니다.',P('첫 번째 터널 + 다리 + 두 번째 터널을 모두 지나야 합니다.'),EQ(`${TA} + ${G} + ${TB} = ${TA+G+TB}(m)`)),
+      ST('②','맨 뒤까지 나오는 거리를 더합니다.',P('맨 뒤는 맨 앞보다 기차 길이만큼 뒤에 있으므로, 기차 길이를 더해야 완전히 나옵니다.'),EQ(`${TA+G+TB} + ${L} = ${D}(m)`)),
+      ST('③','걸린 시간을 구합니다.',P('(시간) = (거리) ÷ (속력)'),EQ(`${D} ÷ ${v} = ${t}(초)`))],
+    concept:CON(['여러 구간이 있으면 사이의 다리 길이도 빠뜨리지 않고 더합니다.','"맨 뒤가 나온다"는 조건은 항상 기차 길이를 더한다는 뜻입니다.']),
+    check:CHK(`${v}m씩 ${t}초 동안 가면 ${v} × ${t} = ${D}m입니다. 두 터널 ${TA+TB}m, 다리 ${G}m, 기차 ${L}m의 합과 같습니다.`),
+    last:`답: ${t}초.`};
+});
+
+/* ================= 유형과 단계 ================= */
+const TYPES=[
+  {lv:0,title:'기차가 터널을 빠져나오는 시간',key:'거리 = 터널 길이 + 기차 길이',keep:'맨 뒤까지 나와야 하므로 기차 길이를 꼭 더합니다.',gen:G1},
+  {lv:0,title:'통과 시간으로 터널 길이 구하기',key:'터널 길이 = (기차가 간 거리) − (기차 길이)',keep:'먼저 기차가 간 거리를 (속력 × 시간)으로 구합니다.',gen:G2},
+  {lv:1,title:'터널 안에 기차 전체가 있는 시간',key:'거리 = 터널 길이 − 기차 길이',keep:'기차가 완전히 안에 있는 동안 움직인 거리를 생각합니다.',gen:G3},
+  {lv:1,title:'마주 오는 두 기차가 지나칠 때',key:'시간 = (두 기차 길이의 합) ÷ (두 속력의 합)',keep:'서로 마주 보면 속력을 더합니다.',gen:G4},
+  {lv:1,title:'지나친 시간으로 기차 길이 구하기',key:'(두 기차 길이의 합) = (속력의 합) × (시간)',keep:'가까워진 거리를 구한 뒤, 아는 기차 길이를 뺍니다.',gen:N5},
+  {lv:1,title:'필요 없는 정보 골라내기',key:'시간 = (거리) ÷ (속력)',keep:'묻는 것에 필요한 숫자만 골라 씁니다.',gen:N6},
+  {lv:1,title:'칸으로 된 기차가 터널을 지나는 시간',key:'기차 길이 = 칸별 길이의 합',keep:'칸 수에 한 칸 길이를 곱하고, 다른 칸은 따로 더합니다.',gen:N15},
+  {lv:2,title:'같은 방향으로 추월하기',key:'시간 = (두 기차 길이의 합) ÷ (두 속력의 차)',keep:'같은 방향으로 달리면 속력을 뺍니다.',gen:G5},
+  {lv:2,title:'두 시간으로 기차 길이 구하기',key:'(통과 거리) − (보이지 않는 거리) = (기차 길이) × 2',keep:'두 거리의 차에는 기차 길이가 2번 들어 있습니다.',gen:G6},
+  {lv:2,title:'통과 시간으로 속력 구하기',key:'속력 = (터널 + 기차 길이) ÷ (시간)',keep:'초속 × 3.6 = 시속(km/h)입니다.',gen:N9},
+  {lv:2,title:'추월 시간으로 속력 구하기',key:'두 속력의 차 = (두 기차 길이의 합) ÷ (시간)',keep:'빠른 기차의 속력 = (느린 기차 속력) + (차)입니다.',gen:N10},
+  {lv:2,title:'출발 시각이 다른 두 기차의 따라잡기',key:'시간 = (먼저 출발한 기차가 앞선 거리) ÷ (속력의 차)',keep:'먼저 앞선 거리를 구한 뒤 속력의 차로 나눕니다.',gen:N16},
+  {lv:3,title:'시속을 초속으로 바꾸어 통과 시간 구하기 (긴 지문)',key:'초속 = 시속 ÷ 3.6',keep:'지문에서 필요한 숫자만 골라 단위를 맞춥니다.',gen:N11},
+  {lv:3,title:'속력이 바뀌는 두 구간 (긴 지문)',key:'(시간) = (구간 거리) ÷ (구간 속력), 시간끼리 더합니다',keep:'구간마다 따로 계산하고, 속력을 평균 내지 않습니다.',gen:N12},
+  {lv:3,title:'반대 방향으로 걷는 사람과 엇갈리기 (긴 지문)',key:'시간 = (기차 길이) ÷ (기차 속력 + 사람 속력)',keep:'사람의 속력은 시속을 3.6으로 나누어 초속으로 바꿉니다.',gen:N13},
+  {lv:3,title:'두 구간의 평균 속력 구하기 (긴 지문)',key:'평균 속력 = (전체 거리) ÷ (전체 시간)',keep:'속력을 그냥 나누지 않고, 거리와 시간을 각각 더합니다.',gen:N14},
+  {lv:3,title:'터널 두 개와 다리를 연속으로 통과 (긴 지문)',key:'거리 = 터널 + 다리 + 터널 + 기차 길이',keep:'사이의 다리와 기차 길이를 모두 빠뜨리지 않습니다.',gen:N17}
+];
+TYPES.forEach((t,i)=>{t.id='t'+(i+1);t.no=String(i+1);});
+const LEVELS=[{name:'기본',grade:'1단계'},{name:'응용',grade:'2단계'},{name:'심화',grade:'3단계'},{name:'극심화',grade:'4단계'}];
+LEVELS.forEach((l,i)=>{l.types=TYPES.filter(t=>t.lv===i);l.mix='m'+(i+1);});
+const ORDER=[];LEVELS.forEach(l=>ORDER.push(...l.types.map(t=>t.id),l.mix));
+const lvOf=id=>id[0]==='m'?Number(id.slice(1))-1:TYPES.find(t=>t.id===id).lv;
+
+/* ===== 연습 상자 ===== */
+function mount(host,list,isMix){
+  host.innerHTML=`
+    <div class="try">
+      <h3>${isMix?'랜덤으로 풀어보기':'혼자 풀어보기'}</h3>
+      <p class="q" data-r="q"></p>
+      <div data-r="fig"></div>
+      <div class="hintbox" data-r="hint" hidden></div>
+      <div class="row">
+        <label class="tip" for="${host.id}-in">답</label>
+        <input type="text" inputmode="numeric" autocomplete="off" id="${host.id}-in" data-r="in">
+        <span data-r="unit"></span>
+        <button type="button" class="btn" data-r="chk">확인</button>
+        <button type="button" class="btn ghost" data-r="new">문제 뽑기</button>
+      </div>
+      <div class="fb" data-r="fb" role="status" aria-live="polite" hidden></div>
+      <details data-r="sol" hidden><summary>자세한 풀이 보기</summary><div class="in" data-r="solin"></div></details>
+      <div class="row"><button type="button" class="btn" data-r="next" hidden>다음 문제 →</button></div>
+      <p class="tally" data-r="tally"></p>
+    </div>`;
+  const $=n=>host.querySelector(`[data-r="${n}"]`);
+  const el={q:$('q'),fig:$('fig'),hint:$('hint'),inp:$('in'),unit:$('unit'),chk:$('chk'),nw:$('new'),fb:$('fb'),sol:$('sol'),solin:$('solin'),next:$('next'),tally:$('tally')};
+  let p=null,tries=0,closed=false,solved=0,right=0;
+  const showFb=(c,t)=>{el.fb.hidden=false;el.fb.className='fb '+c;el.fb.textContent=t;};
+  const tally=()=>{el.tally.textContent=`지금까지 푼 문제 ${solved}개 · 맞힌 문제 ${right}개`;};
+  function fresh(){
+    const g=isMix?pick(list):list[0];
+    p=make(g.gen);p.tname=g.title;
+    tries=0;closed=false;
+    el.q.textContent=p.q;el.fig.innerHTML=p.fig||'';
+    el.unit.textContent=`(${p.unit})`;
+    el.inp.value='';el.inp.className='';el.inp.disabled=false;el.chk.disabled=false;
+    el.hint.hidden=true;el.fb.hidden=true;el.sol.hidden=true;el.sol.open=false;el.next.hidden=true;
+    tally();
+  }
+  function close(){
+    closed=true;solved++;el.inp.disabled=true;el.chk.disabled=true;
+    el.solin.innerHTML=p.steps.join('')+(p.concept||'')+(p.check||'')+`<p class="ans">${p.last}</p>`;
+    el.sol.hidden=false;el.sol.open=true;el.next.hidden=false;tally();
+  }
+  function check(){
+    if(closed)return;
+    const raw=el.inp.value.replace(/[^0-9\-]/g,'');
+    if(raw===''||raw==='-'){showFb('bad','숫자로 답을 넣어 주세요. 예: 120');return;}
+    const v=Number(raw);
+    const tn=isMix?` 이 문제는 ‘${p.tname}’ 유형이에요.`:'';
+    if(v===p.ans){
+      el.inp.className='good';
+      if(tries===0)right++;
+      showFb('good','○ 정답입니다! 아래 풀이로 과정도 확인해 봐요.'+tn);
+      close();
+    }else{
+      tries++;el.inp.className='bad';
+      el.hint.innerHTML=`<p>💡 ${p.hint}</p>`;el.hint.hidden=false;
+      if(tries<2){showFb('bad','✕ 아쉬워요. 힌트를 보고 한 번 더 생각해 봐요.');}
+      else{showFb('bad',`풀이를 보고 함께 확인해요. 정답은 ${p.ans}${p.unit}입니다.`+tn);close();}
+    }
+  }
+  el.chk.addEventListener('click',check);
+  el.inp.addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+  el.nw.addEventListener('click',fresh);
+  el.next.addEventListener('click',fresh);
+  fresh();
+}
+
+/* ===== 화면 만들기 ===== */
+function sectionHTML(t){
+  const ex=make(t.gen);
+  return `<section id="${t.id}" class="card" hidden>
+    <div class="head"><span class="no">유형 ${t.no}</span><h2>${t.title}</h2></div>
+    <div class="key">${t.key}<small>${t.keep}</small></div>
+    <span class="tag">예제</span>
+    <p class="q">${ex.q}</p>
+    ${ex.fig||''}
+    <details><summary>자세한 풀이 보기</summary><div class="in">${ex.steps.join('')}${ex.concept||''}${ex.check||''}<p class="ans">${ex.last}</p></div></details>
+    <div id="${t.id}-try"></div>
+  </section>`;
+}
+const main=document.getElementById('main'),chips=document.getElementById('chips'),lvbar=document.getElementById('lvbar');
+main.innerHTML=TYPES.map(sectionHTML).join('')+LEVELS.map(l=>`
+  <section id="${l.mix}" class="card" hidden>
+    <div class="head"><span class="no">★</span><h2>${l.name} 랜덤 문제</h2></div>
+    <p class="note">${l.name} 단계의 유형이 섞여 나와요. 어떤 유형인지 먼저 생각해 보세요. 답을 내고 나면 유형 이름을 알려 줘요.</p>
+    <div id="${l.mix}-try"></div>
+  </section>`).join('');
+TYPES.forEach(t=>mount(document.getElementById(t.id+'-try'),[t],false));
+LEVELS.forEach(l=>mount(document.getElementById(l.mix+'-try'),l.types,true));
+
+function paintLevels(cur){
+  lvbar.innerHTML=LEVELS.map((l,i)=>`<button type="button" class="lv${i===cur?' on':''}" role="tab" aria-selected="${i===cur}" data-lv="${i}"><b>${l.name}</b><small>${l.grade}</small></button>`).join('');
+}
+function paintChips(lv,cur){
+  const L=LEVELS[lv];
+  chips.innerHTML=L.types.map(t=>`<button type="button" class="chip${t.id===cur?' on':''}" role="tab" aria-selected="${t.id===cur}" data-go="${t.id}">${t.no}. ${t.title}</button>`).join('')
+    +`<button type="button" class="chip${L.mix===cur?' on':''}" role="tab" aria-selected="${L.mix===cur}" data-go="${L.mix}">★ ${L.name} 랜덤</button>`;
+}
+function show(id,scroll){
+  if(!ORDER.includes(id))id='t1';
+  const lv=lvOf(id);
+  main.querySelectorAll('section').forEach(s=>{s.hidden=s.id!==id;});
+  paintLevels(lv);paintChips(lv,id);
+  if(scroll!==false)window.scrollTo({top:0,behavior:'smooth'});
+}
+const go=id=>{try{history.replaceState(null,'','#'+id);}catch(_){}show(id);};
+chips.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)go(b.dataset.go);});
+lvbar.addEventListener('click',e=>{const b=e.target.closest('[data-lv]');if(b)go(LEVELS[Number(b.dataset.lv)].types[0].id);});
+window.addEventListener('hashchange',()=>show(location.hash.slice(1),false));
+show(location.hash.slice(1)||'t1',false);
+})();
+</script>
+</body>
+</html>
